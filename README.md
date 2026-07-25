@@ -6,9 +6,9 @@
 
 | Field            | Value                                |
 | ---------------- | ------------------------------------ |
-| Full Name        |                                      |
-| Project Name     |                                      |
-| GitHub Username  |                                      |
+| Full Name        | Mohamed Saleh Matar                  |
+| Project Name     | DreamCatcher                         |
+| GitHub Username  | mohamedSalehMatar                    |
 | Challenge Batch  | June–July 2026                       |
 | Training Program | Large Language Models (LLMs) Program |
 | Organization     | [**Edrak for Ai**](https://edrak4ai.com/en)                         |
@@ -17,7 +17,7 @@
 
 # 📖 Project Overview
 
-Briefly describe your project.
+DreamCatch is a dream journaling system aiming at streamlining remembering, organizing and analysing your dreams!
 
 ---
 
