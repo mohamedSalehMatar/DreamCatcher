@@ -23,15 +23,21 @@ DreamCatch is a dream journaling system aiming at streamlining remembering, orga
 
 # ✨ Features
 
-* Feature 1
-* Feature 2
-* Feature 3
+* AI dream journal that takes written description of the user's dreams.
+* RAG system to store, organize and retrieve dreams for analysis. 
+* AI dream analyzer that answer user queries based on stored dreams and the recurring patterns between them. 
 
 ---
 
 # 🛠️ Technologies Used
 
-List the technologies, frameworks, and tools used in this project.
+Python
+PyTorch
+Langchain
+HuggingFace
+FAISS
+PyPDFLoader
+Transformers
 
 ---
 
