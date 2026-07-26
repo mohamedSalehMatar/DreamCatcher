@@ -33,7 +33,7 @@ DreamCatch is a dream journaling system aiming at streamlining remembering, orga
 
 Python
 PyTorch
-Langchain
+LangChain
 HuggingFace
 FAISS
 PyPDFLoader
