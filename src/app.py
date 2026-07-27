@@ -6,16 +6,16 @@ import sys
 from pathlib import Path
 
 import streamlit as st
-import torch
 from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from request_model import generate_entry_via_api
 
 # Project database folder
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_DIR = PROJECT_ROOT / "src" / "database"
 DB_DIR.mkdir(parents=True, exist_ok=True)
-
-MODEL_DIR = PROJECT_ROOT / "Mistral-7B-Instruct-v0.2"
+NOTEBOOK_PATH = PROJECT_ROOT / "src" / "main.ipynb"
+NOTEBOOK_INPUT_PATH = PROJECT_ROOT / "src" / ".dream_input.json"
 DATE_FORMAT = "%d-%m-%Y"
 
 
@@ -35,6 +35,38 @@ def try_pretty_json(text: str):
 
 def sanitize_filename(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z._-]", "-", value).strip(".-") or "dream-entry"
+
+
+def write_notebook_input(dream_text: str) -> None:
+    payload = {"dream_text": dream_text.strip()}
+    NOTEBOOK_INPUT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def run_notebook_with_input(dream_text: str) -> subprocess.CompletedProcess:
+    write_notebook_input(dream_text)
+
+    try:
+        notebook_json = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=1, stdout="", stderr=str(exc))
+
+    namespace = {"__name__": "__main__"}
+    for cell in notebook_json.get("cells", []):
+        if cell.get("cell_type") != "code":
+            continue
+        source = cell.get("source", [])
+        if isinstance(source, list):
+            code = "".join(source)
+        else:
+            code = str(source)
+        if not code.strip():
+            continue
+        try:
+            exec(compile(code, str(NOTEBOOK_PATH), "exec"), namespace)
+        except Exception as exc:
+            return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=1, stdout="", stderr=str(exc))
+
+    return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=0, stdout="", stderr="")
 
 
 def format_entry_markdown(entry: dict, date_value: str) -> str:
@@ -74,70 +106,16 @@ def save_entry(entry: dict, date_value: str, suggested_name: str = "") -> tuple[
     return json_path, md_path
 
 
-@st.cache_resource(show_spinner=False)
-def load_model_components():
-    tokenizer = AutoTokenizer.from_pretrained(str(MODEL_DIR), local_files_only=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch_dtype = torch.float16 if device == "cuda" else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(
-        str(MODEL_DIR),
-        local_files_only=True,
-        torch_dtype=torch_dtype,
-    )
-    model.to(device)
-    model.eval()
-    return tokenizer, model, device
-
-
-def generate_entry_from_dream(dream_text: str, date_value: str, title_hint: str = "") -> dict:
-    tokenizer, model, device = load_model_components()
-
-    prompt = f"""You are an expert dream journaler.
-Return ONLY valid JSON with these keys:
-- dream-title: a concise title in 3 words or fewer
-- dream_date: the date in DD-MM-YYYY format
-- dream_description: an exact copy of the user's dream text
-- dream_symbols: a list of strings describing symbols in the dream
-- dream_vibes: a list of strings describing the main emotional vibes
-
-User dream:
-{dream_text}
-
-Date to use: {date_value}
-
-If a title is provided, use it as the basis for dream-title.
-Title hint: {title_hint}
-"""
-
-    messages = [{"role": "user", "content": prompt}]
-    encoded = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors="pt")
-    encoded = encoded.to(device)
-
-    with torch.no_grad():
-        output = model.generate(
-            encoded,
-            max_new_tokens=350,
-            temperature=0.2,
-            do_sample=False,
-            pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-        )
-
-    text = tokenizer.decode(output[0][encoded.shape[-1]:], skip_special_tokens=True).strip()
-    inner = extract_inner_json(text)
-    pretty, parsed = try_pretty_json(inner)
-    if isinstance(parsed, dict):
-        parsed.setdefault("dream-title", title_hint.strip() or "Untitled Dream")
-        parsed.setdefault("dream_date", date_value)
-        parsed.setdefault("dream_description", dream_text)
-        parsed.setdefault("dream_symbols", [])
-        parsed.setdefault("dream_vibes", [])
-        return parsed
-
-    raise ValueError(f"The model did not return valid JSON: {text}")
+def build_entry_from_service(dream_text: str, date_value: str) -> dict:
+    payload = generate_entry_via_api(dream_text)
+    entry = {
+        "dream-title": payload.get("dream_title", "Dream Entry"),
+        "dream_date": payload.get("dream_date") or date_value,
+        "dream_description": payload.get("dream_description", dream_text),
+        "dream_symbols": payload.get("dream_symbols", ["dream imagery"]),
+        "dream_vibes": payload.get("dream_vibes", ["reflective"]),
+    }
+    return entry
 
 
 def main() -> None:
@@ -179,51 +157,26 @@ def main() -> None:
             st.info("Select an existing entry from the sidebar to view it.")
 
     with col2:
-        st.subheader("Create a dream entry with the model")
-        today = datetime.date.today().strftime(DATE_FORMAT)
-        date_str = st.text_input("Date (DD-MM-YYYY)", value=today)
+        st.subheader("Create a dream entry")
+        st.info("Enter a dream below and this app will call the FastAPI model service so the model is loaded once in the server process.")
         dream_text = st.text_area(
             "Dream description",
             height=220,
             placeholder="Describe the dream here...",
         )
-        title_hint = st.text_input("Optional title", value="")
 
-        if st.button("Generate entry with Mistral", use_container_width=True):
+        if st.button("Generate entry via model service", use_container_width=True):
             if not dream_text.strip():
                 st.error("Please describe the dream before generating an entry.")
             else:
-                with st.spinner("Creating a structured dream entry with the model..."):
+                with st.spinner("Calling the model service..."):
                     try:
-                        entry = generate_entry_from_dream(dream_text, date_str, title_hint)
-                        json_path, md_path = save_entry(entry, date_str, title_hint)
+                        entry = build_entry_from_service(dream_text, datetime.date.today().strftime(DATE_FORMAT))
+                        json_path, md_path = save_entry(entry, datetime.date.today().strftime(DATE_FORMAT))
                         st.success(f"Saved {json_path.name} and {md_path.name} in {DB_DIR}")
                         st.json(entry)
                     except Exception as exc:
                         st.error(f"Failed to generate the entry: {exc}")
-
-        st.markdown("---")
-        st.subheader("Manual save")
-        st.markdown("Paste a JSON block or markdown output if you want to save it directly.")
-        input_text = st.text_area("Manual JSON/markdown", height=180)
-        manual_name = st.text_input("Manual filename (optional)", value="")
-
-        if st.button("Save manual entry"):
-            if not input_text.strip():
-                st.error("Please paste the JSON or markdown content to save.")
-            else:
-                inner = extract_inner_json(input_text)
-                pretty, parsed = try_pretty_json(inner)
-                if isinstance(parsed, dict):
-                    entry = parsed
-                else:
-                    entry = {"dream-title": manual_name.strip() or "Manual Entry", "dream_description": inner}
-
-                try:
-                    json_path, md_path = save_entry(entry, date_str, manual_name)
-                    st.success(f"Saved {json_path.name} and {md_path.name} in {DB_DIR}")
-                except Exception as exc:
-                    st.error(f"Failed to save files: {exc}")
 
     st.markdown("---")
     st.caption("DreamCatcher — manage and inspect model-generated dream entries stored in the local src/database folder.")
