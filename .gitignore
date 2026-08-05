@@ -1,5 +1,6 @@
 venv
-*.txt
+__pycache__
 Mistral-7B-Instruct-v0.2
 database
+*.txt
 *.json
