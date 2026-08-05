@@ -1,4 +1,3 @@
-import datetime
 import json
 import re
 from pathlib import Path
@@ -10,11 +9,11 @@ from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+LOCAL_MODEL_DIR = PROJECT_ROOT / "Mistral-7B-Instruct-v0.2"
+MODEL_NAME = str(LOCAL_MODEL_DIR if LOCAL_MODEL_DIR.exists() else "mistralai/Mistral-7B-Instruct-v0.2")
 
 app = FastAPI(title="DreamCatcher Model Service")
 
-notebook_path = PROJECT_ROOT / "src" / "main.ipynb"
 tokenizer = None
 model = None
 generate_text = None
@@ -35,38 +34,33 @@ class DreamResponse(BaseModel):
 def load_model_once() -> tuple[Any, Any, Any]:
     global tokenizer, model, generate_text
     if tokenizer is None or model is None or generate_text is None:
-        if not notebook_path.exists():
-            raise FileNotFoundError(f"Notebook not found: {notebook_path}")
+        model_kwargs: dict[str, Any] = {"torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32}
+        if torch.cuda.is_available():
+            model_kwargs["device_map"] = "auto"
 
-        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
-        namespace: dict[str, Any] = {
-            "__name__": "__main__",
-            "Path": Path,
-            "datetime": datetime,
-            "re": re,
-            "torch": torch,
-            "json": json,
-            "AutoTokenizer": AutoTokenizer,
-            "AutoModelForCausalLM": AutoModelForCausalLM,
-        }
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, **model_kwargs)
 
-        for cell in notebook.get("cells", []):
-            if cell.get("cell_type") != "code":
-                continue
-            source = cell.get("source", [])
-            code = "".join(source) if isinstance(source, list) else str(source)
-            if not code.strip():
-                continue
-            exec(compile(code, str(notebook_path), "exec"), namespace)
-            if "def generate_text" in code:
-                break
+        if not torch.cuda.is_available():
+            model = model.to("cpu")
 
-        tokenizer = namespace.get("tokenizer")
-        model = namespace.get("model")
-        generate_text = namespace.get("generate_text")
+        def generate_text_impl(prompt: str, max_length: int = 1100, num_return_sequences: int = 1) -> str:
+            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+            outputs = model.generate(
+                **inputs,
+                max_length=max_length,
+                num_return_sequences=num_return_sequences,
+                do_sample=True,
+                top_k=50,
+                top_p=0.95,
+                temperature=0.7,
+            )
+            return [tokenizer.decode(output, skip_special_tokens=True) for output in outputs][0]
+
+        generate_text = generate_text_impl
 
         if tokenizer is None or model is None or generate_text is None:
-            raise RuntimeError("The notebook model setup could not be loaded")
+            raise RuntimeError("The model setup could not be loaded")
 
     return tokenizer, model, generate_text
 

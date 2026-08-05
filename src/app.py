@@ -14,59 +14,11 @@ from request_model import generate_entry_via_api
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_DIR = PROJECT_ROOT / "src" / "database"
 DB_DIR.mkdir(parents=True, exist_ok=True)
-NOTEBOOK_PATH = PROJECT_ROOT / "src" / "main.ipynb"
-NOTEBOOK_INPUT_PATH = PROJECT_ROOT / "src" / ".dream_input.json"
 DATE_FORMAT = "%d-%m-%Y"
-
-
-def extract_inner_json(text: str) -> str:
-    m = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-    return m.group(1) if m else text
-
-
-def try_pretty_json(text: str):
-    try:
-        obj = json.loads(text)
-        pretty = json.dumps(obj, indent=2, ensure_ascii=False)
-        return pretty, obj
-    except Exception:
-        return text, None
 
 
 def sanitize_filename(value: str) -> str:
     return re.sub(r"[^0-9A-Za-z._-]", "-", value).strip(".-") or "dream-entry"
-
-
-def write_notebook_input(dream_text: str) -> None:
-    payload = {"dream_text": dream_text.strip()}
-    NOTEBOOK_INPUT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def run_notebook_with_input(dream_text: str) -> subprocess.CompletedProcess:
-    write_notebook_input(dream_text)
-
-    try:
-        notebook_json = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
-    except Exception as exc:
-        return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=1, stdout="", stderr=str(exc))
-
-    namespace = {"__name__": "__main__"}
-    for cell in notebook_json.get("cells", []):
-        if cell.get("cell_type") != "code":
-            continue
-        source = cell.get("source", [])
-        if isinstance(source, list):
-            code = "".join(source)
-        else:
-            code = str(source)
-        if not code.strip():
-            continue
-        try:
-            exec(compile(code, str(NOTEBOOK_PATH), "exec"), namespace)
-        except Exception as exc:
-            return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=1, stdout="", stderr=str(exc))
-
-    return subprocess.CompletedProcess(args=[str(NOTEBOOK_PATH)], returncode=0, stdout="", stderr="")
 
 
 def format_entry_markdown(entry: dict, date_value: str) -> str:
