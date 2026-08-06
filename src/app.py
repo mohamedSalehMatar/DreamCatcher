@@ -8,6 +8,7 @@ from pathlib import Path
 import streamlit as st
 from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
 
+from file_naming import build_output_filename
 from request_model import generate_entry_via_api
 
 # Project database folder
@@ -15,10 +16,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_DIR = PROJECT_ROOT / "src" / "database"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 DATE_FORMAT = "%d-%m-%Y"
-
-
-def sanitize_filename(value: str) -> str:
-    return re.sub(r"[^0-9A-Za-z._-]", "-", value).strip(".-") or "dream-entry"
 
 
 def format_entry_markdown(entry: dict, date_value: str) -> str:
@@ -41,8 +38,11 @@ def format_entry_markdown(entry: dict, date_value: str) -> str:
 
 
 def save_entry(entry: dict, date_value: str, suggested_name: str = "") -> tuple[Path, Path]:
-    title = entry.get("dream-title", "Untitled Dream")
-    fname_base = sanitize_filename(suggested_name.strip() or title or date_value)
+    title = (suggested_name.strip() if suggested_name else "") or entry.get("dream-title") or entry.get("title") or entry.get("dream_title")
+    if not title:
+        raise ValueError("A title is required for the output filename")
+
+    fname_base = build_output_filename(title, date_value)
     json_path = DB_DIR / f"{fname_base}.json"
     md_path = DB_DIR / f"{fname_base}.md"
 
@@ -60,14 +60,14 @@ def save_entry(entry: dict, date_value: str, suggested_name: str = "") -> tuple[
 
 def build_entry_from_service(dream_text: str, date_value: str) -> dict:
     payload = generate_entry_via_api(dream_text)
-    entry = {
-        "dream-title": payload.get("dream_title", "Dream Entry"),
-        "dream_date": payload.get("dream_date") or date_value,
-        "dream_description": payload.get("dream_description", dream_text),
-        "dream_symbols": payload.get("dream_symbols", ["dream imagery"]),
-        "dream_vibes": payload.get("dream_vibes", ["reflective"]),
-    }
-    return entry
+    # entry = {
+    #     "dream-title": payload.get("dream_title", "Dream Entry"),
+    #     "dream_date": payload.get("dream_date") or date_value,
+    #     "dream_description": payload.get("dream_description", dream_text),
+    #     "dream_symbols": payload.get("dream_symbols", ["dream imagery"]),
+    #     "dream_vibes": payload.get("dream_vibes", ["reflective"]),
+    # }
+    return payload
 
 
 def main() -> None:

@@ -4,6 +4,8 @@ import re
 import json
 
 import torch
+
+from file_naming import build_output_filename
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -121,9 +123,10 @@ def save_entry_from_model_output(output_text, date_value):
         data = {}
 
     json_content = json.dumps(data, indent=2, ensure_ascii=False)
-    safe_date = re.sub(r"[^A-Za-z0-9._-]+", "_", str(date_value))
-    json_path = DB_DIR / f"{safe_date}.json"
-    md_path = DB_DIR / f"{safe_date}.md"
+    title = data.get("title") or data.get("dream-title") or "Untitled Dream"
+    fname_base = build_output_filename(title, date_value)
+    json_path = DB_DIR / f"{fname_base}.json"
+    md_path = DB_DIR / f"{fname_base}.md"
     json_path.write_text(json_content, encoding="utf-8")
     md_path.write_text(build_markdown_entry(data, date_value), encoding="utf-8")
     return json_path, md_path
