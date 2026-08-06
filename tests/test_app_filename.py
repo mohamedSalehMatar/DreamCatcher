@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from app import format_entry_markdown
+from app import format_entry_markdown, normalize_entry_for_storage
 from src.file_naming import build_output_filename
 
 
@@ -31,6 +31,19 @@ class MarkdownFormattingTests(unittest.TestCase):
         markdown = format_entry_markdown(entry, "06-08-2026")
 
         self.assertIn("# Glass City", markdown)
+
+    def test_normalize_entry_for_storage_uses_runtime_date(self) -> None:
+        entry = {
+            "dream_title": "Short Horse Transformation",
+            "dream_date": "23-12-2023",
+            "dream_description": "I transformed into a short horse.",
+            "dream_symbols": ["horse"],
+            "dream_vibes": ["surprise"],
+        }
+
+        normalized = normalize_entry_for_storage(entry, "06-08-2026")
+
+        self.assertEqual(normalized["dream_date"], "06-08-2026")
 
 
 if __name__ == "__main__":

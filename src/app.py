@@ -18,6 +18,14 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 DATE_FORMAT = "%d-%m-%Y"
 
 
+def normalize_entry_for_storage(entry: dict, date_value: str) -> dict:
+    normalized = dict(entry)
+    normalized["dream_date"] = date_value
+    if "date" in normalized:
+        normalized["date"] = date_value
+    return normalized
+
+
 def format_entry_markdown(entry: dict, date_value: str) -> str:
     title = entry.get("dream_title", [])
     description = entry.get("dream_description", "")
@@ -38,7 +46,8 @@ def format_entry_markdown(entry: dict, date_value: str) -> str:
 
 
 def save_entry(entry: dict, date_value: str, suggested_name: str = "") -> tuple[Path, Path]:
-    title = (suggested_name.strip() if suggested_name else "") or entry.get("dream-title") or entry.get("title") or entry.get("dream_title")
+    normalized_entry = normalize_entry_for_storage(entry, date_value)
+    title = (suggested_name.strip() if suggested_name else "") or normalized_entry.get("dream-title") or normalized_entry.get("title") or normalized_entry.get("dream_title")
     if not title:
         raise ValueError("A title is required for the output filename")
 
@@ -46,8 +55,8 @@ def save_entry(entry: dict, date_value: str, suggested_name: str = "") -> tuple[
     json_path = DB_DIR / f"{fname_base}.json"
     md_path = DB_DIR / f"{fname_base}.md"
 
-    pretty = json.dumps(entry, indent=2, ensure_ascii=False)
-    markdown_text = format_entry_markdown(entry, date_value)
+    pretty = json.dumps(normalized_entry, indent=2, ensure_ascii=False)
+    markdown_text = format_entry_markdown(normalized_entry, date_value)
 
     with json_path.open("w", encoding="utf-8") as handle:
         handle.write(pretty)

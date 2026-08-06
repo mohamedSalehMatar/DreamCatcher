@@ -201,9 +201,11 @@ def generate_dream_entry(request: DreamRequest) -> DreamResponse:
     except Exception:
         parsed_data = {}
 
+    runtime_date = datetime.date.today().strftime("%d-%m-%Y")
+
     return DreamResponse(
         dream_title=parsed_data.get("title", []),
-        dream_date=parsed_data.get("date", datetime.date.today().strftime("%d-%m-%Y")),
+        dream_date=runtime_date,
         dream_description=parsed_data.get("description", request.dream_text),
         dream_symbols=parsed_data.get("symbols", []),
         dream_vibes=parsed_data.get("vibes", []),

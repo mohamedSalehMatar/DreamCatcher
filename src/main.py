@@ -83,10 +83,14 @@ def clean_json_text(text):
 
 
 def build_markdown_entry(data, date_value):
-    title = data.get("dream-title", "Untitled Dream")
-    description = data.get("dream_description", "")
-    symbols = data.get("dream_symbols", [])
-    vibes = data.get("dream_vibes", [])
+    normalized_data = dict(data)
+    normalized_data["dream_date"] = date_value
+    normalized_data["date"] = date_value
+
+    title = normalized_data.get("dream-title", "Untitled Dream")
+    description = normalized_data.get("dream_description", "")
+    symbols = normalized_data.get("dream_symbols", [])
+    vibes = normalized_data.get("dream_vibes", [])
 
     if not isinstance(symbols, list):
         symbols = [symbols]
@@ -96,7 +100,7 @@ def build_markdown_entry(data, date_value):
     lines = [
         f"# {title}",
         "",
-        f"**Dream Date:** {data.get('dream_date', date_value)}",
+        f"**Dream Date:** {normalized_data.get('dream_date', date_value)}",
         "",
         "## Dream",
         "",
@@ -121,6 +125,9 @@ def save_entry_from_model_output(output_text, date_value):
 
     if not isinstance(data, dict):
         data = {}
+
+    data["dream_date"] = date_value
+    data["date"] = date_value
 
     json_content = json.dumps(data, indent=2, ensure_ascii=False)
     title = data.get("title") or data.get("dream-title") or "Untitled Dream"
