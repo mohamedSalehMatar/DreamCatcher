@@ -119,13 +119,15 @@ This project demonstrates a complete local-first workflow for dream journaling, 
 
 - local dream entry storage
 - markdown-based previewing
-- AI-assisted dream analysis using a retrieval-based approach
+- AI-assisted dream analysis using a retrieval-based approach (RAG)
 - a simple GUI for interacting with the journal without needing an online service
 
 ---
 
 # 🔮 Future Improvements
 
+* Optimizing system requirments
+* Optimizing LLM response time 
 * Add a more polished UI and better tab navigation
 * Improve the RAG prompt quality for richer dream analysis
 * Add export options such as PDF or JSON backup
