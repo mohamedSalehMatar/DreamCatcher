@@ -3,5 +3,4 @@ __pycache__
 *.pyc
 Mistral-7B-Instruct-v0.2
 database
-*.txt
 *.json

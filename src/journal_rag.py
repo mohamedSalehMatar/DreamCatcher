@@ -35,13 +35,13 @@ def build_rag_index():
     if not documents:
         return None
 
-    splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=10)
     chunks = splitter.split_documents(documents)
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     return FAISS.from_documents(chunks, embedding)
 
 
-def generate_text(prompt, tokenizer, model, max_length=1100, num_return_sequences=1):
+def generate_text(prompt, tokenizer, model, max_length=500, num_return_sequences=1):
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     outputs = model.generate(
         **inputs,

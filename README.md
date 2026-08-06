@@ -33,43 +33,103 @@ DreamCatch is a dream journaling system aiming at streamlining remembering, orga
 
 Python
 PyTorch
+Streamlit
 LangChain
 HuggingFace
 FAISS
-PyPDFLoader
 Transformers
 
 ---
 
 # ⚙️ Installation
 
-Explain how to install and run the project.
+DreamCatcher is designed mainly for local use. The project stores dream entries locally in the database folder and can run without any cloud service dependency.
+
+## 1. Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd DreamCatcher
+```
+
+## 2. Create a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+## 3. Install dependencies
+
+Install the required Python packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+## 4. Start the model service
+
+The app uses a local FastAPI service for dream entry generation. Run:
+
+```bash
+python -m uvicorn src.model_service:app --host 127.0.0.1 --port 8000
+```
+
+## 5. Launch the Streamlit app
+
+```bash
+python src/app.py
+```
+
+> The app will create and manage dream journal files locally inside the src/database folder.
 
 ---
 
 # 🚀 Usage
 
-Describe how to use the project.
+1. Open the Streamlit app in your browser.
+2. Use the Journal tab to enter a dream as plain text.
+3. The app sends the dream to the local model service and saves the generated entry as both JSON and Markdown files.
+4. Use the Preview tab to view stored dream entries.
+5. Use the Analysis tab to ask questions about your saved dreams through the local RAG workflow.
 
 ---
 
 # 📸 Demo
 
-Add screenshots, GIFs, or a demo video.
+A local demo flow includes:
+
+- writing a dream in the Journal tab
+- saving the generated entry in the database
+- previewing the stored markdown journal entry
+- asking the analysis assistant questions about past dreams
 
 ---
 
 # 📈 Results
 
-Share your project's outcomes or achievements.
+This project demonstrates a complete local-first workflow for dream journaling, including:
+
+- local dream entry storage
+- markdown-based previewing
+- AI-assisted dream analysis using a retrieval-based approach
+- a simple GUI for interacting with the journal without needing an online service
 
 ---
 
 # 🔮 Future Improvements
 
-* Improvement 1
-* Improvement 2
-* Improvement 3
+* Add a more polished UI and better tab navigation
+* Improve the RAG prompt quality for richer dream analysis
+* Add export options such as PDF or JSON backup
+* Support offline model loading improvements for lower-end machines
 
 ---
 
