@@ -1,10 +1,12 @@
 import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from app import format_entry_markdown, normalize_entry_for_storage
+from entry_service import format_entry_markdown, list_markdown_entries, normalize_entry_for_storage
 from src.file_naming import build_output_filename
 
 
@@ -44,6 +46,17 @@ class MarkdownFormattingTests(unittest.TestCase):
         normalized = normalize_entry_for_storage(entry, "06-08-2026")
 
         self.assertEqual(normalized["dream_date"], "06-08-2026")
+
+    def test_list_markdown_entries_returns_sorted_markdown_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            (temp_path / "b.md").write_text("second", encoding="utf-8")
+            (temp_path / "a.md").write_text("first", encoding="utf-8")
+            (temp_path / "notes.txt").write_text("ignore", encoding="utf-8")
+
+            entries = list_markdown_entries(temp_path)
+
+            self.assertEqual([entry.name for entry in entries], ["a.md", "b.md"])
 
 
 if __name__ == "__main__":
