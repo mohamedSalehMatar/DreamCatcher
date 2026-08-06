@@ -19,7 +19,7 @@ DATE_FORMAT = "%d-%m-%Y"
 
 
 def format_entry_markdown(entry: dict, date_value: str) -> str:
-    title = entry.get("dream-title", "Untitled Dream")
+    title = entry.get("dream_title", [])
     description = entry.get("dream_description", "")
     symbols = entry.get("dream_symbols", [])
     vibes = entry.get("dream_vibes", [])

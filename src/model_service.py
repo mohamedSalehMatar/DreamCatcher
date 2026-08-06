@@ -51,11 +51,11 @@ dream_description_schema = ResponseSchema(
 )
 dream_symbols_schema = ResponseSchema(
     name="symbols",
-    description="A list of the symbolism in the dream. Mainly 5 symbols and what they mean based on context",
+    description="A list of the symbolism in the dream. Mainly 3 symbols and what they mean based on context",
 )
 dream_vibes_schema = ResponseSchema(
     name="vibes",
-    description="A list of the main vibes in the dream. Mainly 5 feelings based on context",
+    description="A list of the main vibes in the dream. Mainly 3 feelings based on context",
 )
 
 response_schemas = [
@@ -105,7 +105,7 @@ def parse_model_output(text: str) -> dict[str, Any]:
 
         if "title" in cleaned_text and "description" in cleaned_text:
             return {
-                "title": extract_string("title") or "Untitled Dream",
+                "title": extract_string("title"),
                 "date": extract_string("date") or datetime.date.today().strftime("%d-%m-%Y"),
                 "description": extract_string("description") or cleaned_text,
                 "symbols": extract_array("symbols"),
@@ -125,6 +125,20 @@ Return ONLY a single JSON object with exactly these keys:
 - symbols
 - vibes
 
+Now extract from this dream:
+"{user_input}"
+these keys:
+- title
+- date
+- description
+- symbols
+- vibes
+
+following:
+Formatting instructions:
+"{format_instructions}"
+
+and these rules:
 Rules:
 - Use the exact key names shown above.
 - Do not wrap the JSON in markdown fences.
@@ -133,15 +147,6 @@ Rules:
 - "date" should be in DD-MM-YYYY format.
 - "description" should be the dream text faithfully rendered as a single string.
 - "symbols" and "vibes" must be arrays of strings.
-
-Formatting instructions:
-{format_instructions}
-
-Example JSON:
-{{"title": "Glass Symphony", "date": "05-08-2026", "description": "I was flying through a city of glass.", "symbols": ["glass", "flight", "music"], "vibes": ["wonder", "calm"]}}
-
-Now extract from this dream:
-"{user_input}"
 """
 
 
@@ -197,7 +202,7 @@ def generate_dream_entry(request: DreamRequest) -> DreamResponse:
         parsed_data = {}
 
     return DreamResponse(
-        dream_title=parsed_data.get("title", "Untitled Dream"),
+        dream_title=parsed_data.get("title", []),
         dream_date=parsed_data.get("date", datetime.date.today().strftime("%d-%m-%Y")),
         dream_description=parsed_data.get("description", request.dream_text),
         dream_symbols=parsed_data.get("symbols", []),
